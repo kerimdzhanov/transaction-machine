@@ -1,0 +1,16 @@
+{
+  "name": "transaction-machine",
+  "version": "0.0.0",
+  "description": "Event-oriented financial transactions processing mechanism for Node.js/PostgreSQL.",
+  "repository": "kerimdzhanov/transaction-machine",
+  "homepage": "https://github.com/kerimdzhanov/transaction-machine/wiki",
+  "main": "lib/transaction-machine.js",
+  "dependencies": {
+  },
+  "devDependencies": {
+  },
+  "scripts": {
+  },
+  "author": "Dan Kerimdzhanov",
+  "license": "MIT"
+}
