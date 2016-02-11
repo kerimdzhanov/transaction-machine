@@ -6,6 +6,8 @@
   "homepage": "https://github.com/kerimdzhanov/transaction-machine/wiki",
   "main": "lib/transaction-machine.js",
   "dependencies": {
+    "db-migrate": "^0.9.23",
+    "pg": "^4.4.4"
   },
   "devDependencies": {
     "chai": "^3.5.0",
