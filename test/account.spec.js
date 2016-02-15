@@ -75,8 +75,7 @@ describe('Account', () => {
     });
 
     beforeEach('stub Account#insert', () => {
-      sinon.stub(Account.prototype, 'insert')
-        .returns(Promise.resolve());
+      sinon.stub(Account.prototype, 'insert').yieldsAsync();
     });
 
     afterEach('restore Account#insert', () => {
@@ -120,95 +119,111 @@ describe('Account', () => {
   describe('#insert', () => {
     let attributes, account;
 
-    beforeEach('setup default attributes', () => {
-      attributes = { key: 'account#insert-1' };
-    });
-
     beforeEach('setup account instance', () => {
+      attributes = { key: 'account#insert-1' };
       account = new Account(attributes);
     });
 
-    it('adds a new record into the database', () => {
-      return account.insert()
-        .then(() => {
-          return expect(helper.db.getAccountEntry())
-            .to.eventually.have.property('key', 'account#insert-1');
-        });
+    it('adds a new record into the database', (done) => {
+      account.insert((err) => {
+        if (err) {
+          return done(err);
+        }
+
+        expect(helper.db.getAccountEntry())
+          .to.eventually.have.property('key', 'account#insert-1')
+          .notify(done);
+      });
     });
 
     it('failures if `account.key` is missing', (done) => {
       delete account.attributes.key;
 
-      account.insert()
-        .then(() => done(new Error('expected `account.insert()` to have been failed')))
-        .catch(err => {
-          try {
-            expect(err).to.have.property('code', '23502');
-            expect(err).to.have.property('table', 'account');
-            expect(err).to.have.property('column', 'key');
+      account.insert((err) => {
+        expect(err).to.exist;
 
-            expect(err).to.have.property('message')
-              .that.is.match(/not-null constraint/);
-          }
-          catch (e) {
-            return done(e);
-          }
+        expect(err).to.have.property('code', '23502');
+        expect(err).to.have.property('table', 'account');
+        expect(err).to.have.property('column', 'key');
 
-          done();
-        });
+        expect(err).to.have.property('message')
+          .that.is.match(/not-null constraint/);
+
+        done();
+      });
     });
 
     it('failures on duplicate `account.key` entry', (done) => {
-      account.insert()
-        .then(() => account.insert())
-        .then(() => done(new Error('expected second `account.insert()` to have been failed')))
-        .catch(err => {
-          try {
-            expect(err).to.have.property('code', '23505');
-            expect(err).to.have.property('constraint', 'account_key_idx');
+      account.insert((err) => {
+        if (err) {
+          return done(err);
+        }
 
-            expect(err).to.have.property('message')
-              .that.is.match(/duplicate key value/);
-          }
-          catch (e) {
-            return done(e);
-          }
+        account.insert((err) => {
+          expect(err).to.exist;
+
+          expect(err).to.have.property('code', '23505');
+          expect(err).to.have.property('constraint', 'account_key_idx');
+
+          expect(err).to.have.property('message')
+            .that.is.match(/duplicate key value/);
 
           done();
         });
+      });
     });
 
-    it('assigns a new account `id`', () => {
-      return account.insert()
-        .then(() => {
-          expect(account).to.have.property('id').that.is.a('number');
+    it('assigns a new account `id`', (done) => {
+      account.insert((err) => {
+        if (err) {
+          return done(err);
+        }
 
-          let nextAccount = new Account({ key: 'account#insert-2' });
-          return nextAccount.insert()
-            .then(() => {
-              expect(account.id).not.to.eql(nextAccount.id);
-            });
+        expect(account).to.have.property('id').that.is.a('number');
+
+        let nextAccount = new Account({ key: 'account#insert-2' });
+
+        nextAccount.insert((err) => {
+          if (err) {
+            return done(err);
+          }
+
+          expect(nextAccount.id).not.to.eql(account.id);
+
+          done();
         });
+      });
     });
 
-    it('records current datetime as `created_at`', () => {
-      return account.insert()
-        .then(() => {
-          return helper.db.getAccountEntry({ id: account.id });
-        })
-        .then((entry) => {
-          expect(entry).to.have.property('created_at').that.is.a('Date');
+    it('records current datetime as `created_at`', (done) => {
+      account.insert((err) => {
+        if (err) {
+          return done(err);
+        }
 
-          expect(entry.created_at.getTime())
-            .to.be.closeTo((new Date() - 100), 100);
-        });
+        helper.db.getAccountEntry({ id: account.id })
+          .then((entry) => {
+            expect(entry).to.have.property('created_at').that.is.a('Date');
+
+            expect(entry.created_at.getTime())
+              .to.be.closeTo((new Date() - 100), 100);
+
+            done();
+          })
+          .catch(err => done(err));
+      });
     });
 
-    it('assigns `created_at`', () => {
-      return account.insert()
-        .then(() => {
-          expect(account).to.have.property('created_at').that.is.a('Date');
-        });
+    it('assigns `created_at`', (done) => {
+      account.insert((err) => {
+        if (err) {
+          return done(err);
+        }
+
+        expect(account).to.have.property('created_at').that.is.a('Date');
+
+        done();
+      });
     });
   });
 
