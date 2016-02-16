@@ -225,6 +225,245 @@ describe('Account', () => {
         done();
       });
     });
+
+    describe('when .pre(insert) hooks are present', () => {
+      it('calls through hooked functions', (done) => {
+        account.hooksCalled = [];
+
+        Account
+          .pre('insert', function (next) {
+            this.hooksCalled.push(1);
+            next();
+          })
+          .pre('insert', function (next) {
+            this.hooksCalled.push(2);
+            next();
+          });
+
+        Account.pre('insert', function (next) {
+          this.hooksCalled.push(3);
+          next();
+        });
+
+        account.insert((err) => {
+          if (err) {
+            return done(err);
+          }
+
+          expect(account.hooksCalled).to.eql([1,2,3]);
+
+          done();
+        });
+      });
+
+      it('fails if one of the hooks calls back `next` with error', (done) => {
+        account.hooksCalled = [];
+
+        Account
+          .pre('insert', function (next) {
+            this.hooksCalled.push(1);
+            next();
+          })
+          .pre('insert', function (next) {
+            this.hooksCalled.push(2);
+            next(new Error('Oops!'));
+          });
+
+        Account.pre('insert', function (next) {
+          this.hooksCalled.push(3);
+          next();
+        });
+
+        account.insert((err) => {
+          expect(err).to.exist;
+          expect(account.hooksCalled).to.eql([1,2]);
+          done();
+        });
+      });
+    });
+
+    describe('when .post(insert) hooks are present', () => {
+      it('calls back through hooked functions', (done) => {
+        account.postHooksCalled = [];
+
+        Account
+          .post('insert', function (next) {
+            this.postHooksCalled.push(1);
+            next();
+          })
+          .post('insert', function (next) {
+            this.postHooksCalled.push(2);
+            next();
+          });
+
+        Account.post('insert', function (next) {
+          this.postHooksCalled.push(3);
+          next();
+        });
+
+        account.insert((err) => {
+          if (err) {
+            return done(err);
+          }
+
+          expect(account.postHooksCalled).to.eql([1,2,3]);
+
+          done();
+        });
+      });
+    });
+
+    describe('discriminator', () => {
+      let CustomType;
+
+      beforeEach('setup discriminator', () => {
+        CustomType = Account.discriminator('CustomType');
+        account = new CustomType({ key: 'account-discriminator-1' });
+      });
+
+      it('records the discriminator `type`', (done) => {
+        account.insert((err) => {
+          if (err) {
+            return done(err);
+          }
+
+          expect(helper.db.getAccountEntry({ id: account.id }))
+            .to.eventually.have.property('type', 'CustomType')
+            .notify(done);
+        });
+      });
+
+      describe('when .pre(insert) hooks are present', () => {
+        it('calls through hooked functions', (done) => {
+          account.hooksCalled = [];
+
+          CustomType
+            .pre('insert', function (next) {
+              this.hooksCalled.push(1);
+              next();
+            })
+            .pre('insert', function (next) {
+              this.hooksCalled.push(2);
+              next();
+            });
+
+          CustomType.pre('insert', function (next) {
+            this.hooksCalled.push(3);
+            next();
+          });
+
+          account.insert((err) => {
+            if (err) {
+              return done(err);
+            }
+
+            expect(account.hooksCalled).to.eql([1,2,3]);
+
+            done();
+          });
+        });
+
+        it('fails if one of the hooks calls back `next` with error', (done) => {
+          account.hooksCalled = [];
+
+          CustomType
+            .pre('insert', function (next) {
+              this.hooksCalled.push(1);
+              next();
+            })
+            .pre('insert', function (next) {
+              this.hooksCalled.push(2);
+              next(new Error('Oops!'));
+            });
+
+          CustomType.pre('insert', function (next) {
+            this.hooksCalled.push(3);
+            next();
+          });
+
+          account.insert((err) => {
+            expect(err).to.exist;
+            expect(account.hooksCalled).to.eql([1,2]);
+            done();
+          });
+        });
+      });
+
+      describe('when .post(insert) hooks are present', () => {
+        it('calls back through hooked functions', (done) => {
+          account.postHooksCalled = [];
+
+          CustomType
+            .post('insert', function (next) {
+              this.postHooksCalled.push(1);
+              next();
+            })
+            .post('insert', function (next) {
+              this.postHooksCalled.push(2);
+              next();
+            });
+
+          CustomType.post('insert', function (next) {
+            this.postHooksCalled.push(3);
+            next();
+          });
+
+          account.insert((err) => {
+            if (err) {
+              return done(err);
+            }
+
+            expect(account.postHooksCalled).to.eql([1,2,3]);
+
+            done();
+          });
+        });
+      });
+    });
+
+    describe('when both Account and its discriminator are hooked', function () {
+      it('calls through all hooked functions', (done) => {
+        Account
+          .pre('insert', (next) => {
+            account.hooksCalled.push('account:1');
+            next();
+          })
+          .pre('insert', (next) => {
+            account.hooksCalled.push('account:2');
+            next();
+          });
+
+        let CustomType = Account.discriminator('CustomType');
+
+        CustomType
+          .pre('insert', (next) => {
+            account.hooksCalled.push('discriminator:1');
+            next();
+          })
+          .pre('insert', (next) => {
+            account.hooksCalled.push('discriminator:2');
+            next();
+          });
+
+        let account = new CustomType({ key: 'account-discriminator-2' });
+        account.hooksCalled = [];
+
+        account.insert((err) => {
+          if (err) {
+            return done(err);
+          }
+
+          expect(account.hooksCalled).to.eql([
+            'account:1',
+            'account:2',
+            'discriminator:1',
+            'discriminator:2'
+          ]);
+
+          done();
+        });
+      });
+    });
   });
 
   describe('#toObject', () => {

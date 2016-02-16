@@ -32,5 +32,12 @@ Keeping the `worker.js` running, in a separate shell session, call:
 It will enqueue the account creation job which is processed by `worker.js`.
 A new account with key `acc-1` will be created.
 
+To create a `Balancer` account (which is defined in the `accounts/balancer.js`),
+specify the `--type=Balancer` when creating, like:
+
+    $ [node] ./cli/create-account.js --type=Balancer sys-1
+
+A new account with type `balancer` and key `sys-1` will be created.
+
 
 > To be continued...

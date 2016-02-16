@@ -9,10 +9,21 @@
 const kue = require('kue'),
       queue = kue.createQueue();
 
-const processing = require('../lib/transaction-machine').init();
+/**
+ * Transaction Machine instance.
+ *
+ * @type {exports|TransactionMachine}
+ */
+const processing = require('./lib/processing'),
+      Account = processing.Account,
+      Failure = processing.Failure;
 
-const Failure = processing.Failure;
-const Account = processing.Account;
+/**
+ * Balancer (account extension class).
+ *
+ * @type {Balancer|exports}
+ */
+const Balancer = require('./accounts/balancer');
 
 /**
  * Register a job processor function.
@@ -48,6 +59,11 @@ function worker(type, fn) {
   });
 }
 
+/**
+ * Create account process.
+ *
+ * @see ./cli/create-account.js
+ */
 worker('create_account', (job, done) => {
   Account.create(job.data)
     .then(account => done(null, account.toObject()))
