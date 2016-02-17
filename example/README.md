@@ -40,4 +40,15 @@ specify the `--type=Balancer` when creating, like:
 A new account with type `balancer` and key `sys-1` will be created.
 
 
+## Getting accounts
+
+To get existing account from the database, call:
+
+    $ [node] ./cli/get-account.js --key=acc-1
+
+Accounts are also can be gotten by their internal id, for example:
+
+    $ [node] ./cli/get-account.js --id=4563
+
+
 > To be continued...

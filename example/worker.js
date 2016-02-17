@@ -70,4 +70,15 @@ worker('create_account', (job, done) => {
     .catch(err => done(err));
 });
 
+/**
+ * Get account process.
+ *
+ * @see ./cli/get-account.js
+ */
+worker('get_account', (job, done) => {
+  Account.get(job.data)
+    .then(account => done(null, (account ? account.toObject() : null)))
+    .catch(err => done(err));
+});
+
 console.log('transaction machine worker is started and listening for a queue jobs...'); // >>>

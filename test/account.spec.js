@@ -116,6 +116,99 @@ describe('Account', () => {
     });
   });
 
+  describe('.get', () => {
+    let internalId;
+
+    beforeEach('create account', () => {
+      return helper.db.insertAccount({ key: 'account-to-get' })
+        .then((entry) => (internalId = entry.id));
+    });
+
+    describe('when `query.key` is present', () => {
+      it('resolves an instance of Account', () => {
+        return Account.get({ key: 'account-to-get' })
+          .then((account) => {
+            expect(account).to.be.an.instanceof(Account);
+          });
+      });
+
+      it('resolves an account only if `key` matches', () => {
+        return Account.get({ key: 'wrong-key' })
+          .then((account) => {
+            expect(account).to.not.exist;
+
+            return Account.get({ key: 'account-to-get' })
+              .then((account) => {
+                expect(account).to.exist
+                  .and.have.property('id', internalId);
+              });
+          });
+      });
+    });
+
+    describe('when `query.id` is present', () => {
+      it('resolves an instance of Account', () => {
+        return Account.get({ id: internalId })
+          .then((account) => {
+            expect(account).to.be.an.instanceof(Account);
+          });
+      });
+
+      it('resolves an account only if `id` matches', () => {
+        return Account.get({ id: -5436 })
+          .then((account) => {
+            expect(account).to.not.exist;
+
+            return Account.get({ id: internalId })
+              .then((account) => {
+                expect(account).to.exist
+                  .and.have.property('key', 'account-to-get');
+              });
+          });
+      });
+    });
+
+    describe('when bad query params are given', () => {
+      it('rejects with an error', (done) => {
+        Account.get({ bad: 'params' })
+          .then(() => done(new Error('expected `Account.get` to have been failed')))
+          .catch((err) => {
+            try {
+              expect(err).to.be.an.instanceof(Error)
+                .and.have.property('message', 'bad or missing query params');
+            }
+            catch (e) {
+              return done(e);
+            }
+
+            done();
+          });
+      });
+    });
+
+    describe('discriminator', () => {
+      let CustomType;
+
+      beforeEach('define custom type', () => {
+        CustomType = Account.discriminator('CustomType');
+      });
+
+      beforeEach('create discriminator', () => {
+        return helper.db.insertAccount({
+          key: 'discriminator-to-get',
+          type: 'CustomType'
+        }).then((entry) => (internalId = entry.id));
+      });
+
+      it('resolves an instance of discriminator by `type`', () => {
+        return Account.get({ key: 'discriminator-to-get' })
+          .then((account) => {
+            expect(account).to.be.an.instanceof(CustomType);
+          });
+      });
+    });
+  });
+
   describe('#insert', () => {
     let attributes, account;
 
@@ -130,7 +223,7 @@ describe('Account', () => {
           return done(err);
         }
 
-        expect(helper.db.getAccountEntry())
+        expect(helper.db.getAccount())
           .to.eventually.have.property('key', 'account#insert-1')
           .notify(done);
       });
@@ -201,7 +294,7 @@ describe('Account', () => {
           return done(err);
         }
 
-        helper.db.getAccountEntry({ id: account.id })
+        helper.db.getAccount({ id: account.id })
           .then((entry) => {
             expect(entry).to.have.property('created_at').that.is.a('Date');
 
@@ -327,7 +420,7 @@ describe('Account', () => {
             return done(err);
           }
 
-          expect(helper.db.getAccountEntry({ id: account.id }))
+          expect(helper.db.getAccount({ id: account.id }))
             .to.eventually.have.property('type', 'CustomType')
             .notify(done);
         });

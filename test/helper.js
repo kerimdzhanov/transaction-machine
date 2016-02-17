@@ -28,7 +28,7 @@ db.clean = function dbClean() {
   });
 };
 
-db.getAccountEntry = function getAccountEntry(query) {
+db.getAccount = function getAccount(query) {
   return new Promise((resolve, reject) => {
     let client = new db.Client();
     client.connect();
@@ -68,5 +68,36 @@ db.getAccountEntry = function getAccountEntry(query) {
     });
 
     client.query.apply(client, args);
+  });
+};
+
+db.insertAccount = function insertAccount(attributes) {
+  return new Promise((resolve, reject) => {
+    let client = new db.Client();
+    client.connect();
+
+    let fields = [],
+        values = [];
+
+    for (let field in attributes) {
+      if (attributes.hasOwnProperty(field)) {
+        fields.push(field);
+        values.push(attributes[field]);
+      }
+    }
+
+    client.query(
+      `INSERT INTO "account" ("${fields.join('", "')}")
+        VALUES (${values.map((_, i) => '$' + (i + 1)).join(', ')})
+        RETURNING *;`, values,
+      (err, result) => {
+        client.end(); // close db connection
+
+        if (err) {
+          return reject(err);
+        }
+
+        resolve(result.rows[0]);
+      });
   });
 };
