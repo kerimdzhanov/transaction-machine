@@ -81,4 +81,27 @@ worker('get_account', (job, done) => {
     .catch(err => done(err));
 });
 
+/**
+ * Update account process.
+ *
+ * @see ./cli/update-account.js
+ */
+worker('update_account', (job, done) => {
+  Account.get(job.data.query)
+    .then(account => {
+      if (!account) {
+        return done(new Error('unable to get account by query ' + JSON.stringify(job.data.query)));
+      }
+
+      account.update(job.data.$set, (err) => {
+        if (err) {
+          return done(err);
+        }
+
+        done(null, account.toObject());
+      });
+    })
+    .catch(err => done(err));
+});
+
 console.log('transaction machine worker is started and listening for a queue jobs...'); // >>>

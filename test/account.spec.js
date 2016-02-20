@@ -217,7 +217,7 @@ describe('Account', () => {
       account = new Account(attributes);
     });
 
-    it('adds a new record into the database', (done) => {
+    it('adds a new entry into the database', (done) => {
       account.insert((err) => {
         if (err) {
           return done(err);
@@ -307,7 +307,7 @@ describe('Account', () => {
       });
     });
 
-    it('assigns `created_at`', (done) => {
+    it('assigns the `created_at` value', (done) => {
       account.insert((err) => {
         if (err) {
           return done(err);
@@ -320,21 +320,21 @@ describe('Account', () => {
     });
 
     describe('when .pre(insert) hooks are present', () => {
-      it('calls through hooked functions', (done) => {
-        account.hooksCalled = [];
+      it('calls through the hooked functions', (done) => {
+        account.preHooksCalled = [];
 
         Account
           .pre('insert', function (next) {
-            this.hooksCalled.push(1);
+            this.preHooksCalled.push(1);
             next();
           })
           .pre('insert', function (next) {
-            this.hooksCalled.push(2);
+            this.preHooksCalled.push(2);
             next();
           });
 
         Account.pre('insert', function (next) {
-          this.hooksCalled.push(3);
+          this.preHooksCalled.push(3);
           next();
         });
 
@@ -343,40 +343,40 @@ describe('Account', () => {
             return done(err);
           }
 
-          expect(account.hooksCalled).to.eql([1,2,3]);
+          expect(account.preHooksCalled).to.eql([1,2,3]);
 
           done();
         });
       });
 
-      it('fails if one of the hooks calls back `next` with error', (done) => {
-        account.hooksCalled = [];
+      it('fails if one of the hooks calls back `next` with an error', (done) => {
+        account.preHooksCalled = [];
 
         Account
           .pre('insert', function (next) {
-            this.hooksCalled.push(1);
+            this.preHooksCalled.push(1);
             next();
           })
           .pre('insert', function (next) {
-            this.hooksCalled.push(2);
+            this.preHooksCalled.push(2);
             next(new Error('Oops!'));
           });
 
         Account.pre('insert', function (next) {
-          this.hooksCalled.push(3);
+          this.preHooksCalled.push(3);
           next();
         });
 
         account.insert((err) => {
           expect(err).to.exist;
-          expect(account.hooksCalled).to.eql([1,2]);
+          expect(account.preHooksCalled).to.eql([1,2]);
           done();
         });
       });
     });
 
     describe('when .post(insert) hooks are present', () => {
-      it('calls back through hooked functions', (done) => {
+      it('calls back through the hooked functions', (done) => {
         account.postHooksCalled = [];
 
         Account
@@ -427,7 +427,7 @@ describe('Account', () => {
       });
 
       describe('when .pre(insert) hooks are present', () => {
-        it('calls through hooked functions', (done) => {
+        it('calls through the hooked functions', (done) => {
           account.hooksCalled = [];
 
           CustomType
@@ -456,7 +456,7 @@ describe('Account', () => {
           });
         });
 
-        it('fails if one of the hooks calls back `next` with error', (done) => {
+        it('fails if one of the hooks calls back `next` with an error', (done) => {
           account.hooksCalled = [];
 
           CustomType
@@ -483,7 +483,7 @@ describe('Account', () => {
       });
 
       describe('when .post(insert) hooks are present', () => {
-        it('calls back through hooked functions', (done) => {
+        it('calls back through the hooked functions', (done) => {
           account.postHooksCalled = [];
 
           CustomType
@@ -513,47 +513,313 @@ describe('Account', () => {
         });
       });
     });
+  });
 
-    describe('when both Account and its discriminator are hooked', function () {
-      it('calls through all hooked functions', (done) => {
+  describe('#update', () => {
+    let account;
+
+    beforeEach('insert account entry', () => {
+      return helper.db.insertAccount({
+        key: 'account-to-update',
+        status: 'active'
+      });
+    });
+
+    beforeEach('get account', () => {
+      return Account.get({ key: 'account-to-update' })
+        .then(_account_ => { account = _account_ });
+    });
+
+    it("updates the database entry's attributes", (done) => {
+      account.update({
+        key: 'updated-account',
+        postpaid: true,
+        status: 'suspended'
+      }, (err) => {
+        if (err) {
+          return done(err);
+        }
+
+        helper.db.getAccount({ id: account.id })
+          .then((entry) => {
+            expect(entry).to.have.property('key', 'updated-account');
+            expect(entry).to.have.property('postpaid', true);
+            expect(entry).to.have.property('status', 'suspended');
+            done();
+          })
+          .catch(err => done(err));
+      });
+    });
+
+    it("updates the instance's attributes", (done) => {
+      account.update({
+        key: 'updated-account',
+        postpaid: true,
+        status: 'suspended'
+      }, (err) => {
+        if (err) {
+          return done(err);
+        }
+
+        expect(account).to.have.property('key', 'updated-account');
+        expect(account).to.have.property('postpaid', true);
+        expect(account).to.have.property('status', 'suspended');
+
+        done();
+      });
+    });
+
+    it("doesn't affect another entries", (done) => {
+      helper.db.insertAccount({
+        key: 'another-account',
+        status: 'active'
+      })
+        .then((anotherEntry) => {
+          account.update({ status: 'suspended' }, (err) => {
+            if (err) {
+              return done(err);
+            }
+
+            helper.db.getAccount({ id: anotherEntry.id })
+              .then((anotherEntry) => {
+                expect(anotherEntry)
+                  .to.have.property('status', 'active',
+                    'expected another entry to have not been updated');
+                done();
+              })
+              .catch(err => done(err));
+          });
+        })
+        .catch(err => done(err));
+    });
+
+    it('records current datetime as `updated_at`', (done) => {
+      account.update({ status: 'suspended' }, (err) => {
+        if (err) {
+          return done(err);
+        }
+
+        helper.db.getAccount({ id: account.id })
+          .then((entry) => {
+            expect(entry).to.have.property('updated_at').that.is.a('Date');
+
+            expect(entry.created_at.getTime())
+              .to.be.closeTo((new Date() - 100), 100);
+
+            done();
+          })
+          .catch(err => done(err));
+      });
+    });
+
+    it('assigns the `updated_at` value', (done) => {
+      account.update({ status: 'suspended' }, (err) => {
+        if (err) {
+          return done(err);
+        }
+
+        expect(account).to.have.property('updated_at').that.is.a('Date');
+
+        done();
+      });
+    });
+
+    it('fails with the "missing id" error if `account.id` is missing', (done) => {
+      (new Account({ key: 'new-account' }))
+        .update({}, (err) => {
+          expect(err).to.be.an.instanceof(Error);
+          expect(err.message).to.include('missing `attributes.id`');
+          done();
+        });
+    });
+
+    describe('when .pre(update) hooks are present', () => {
+      it('calls through the hooked functions', (done) => {
+        account.preHooksCalled = [];
+
         Account
-          .pre('insert', (next) => {
-            account.hooksCalled.push('account:1');
+          .pre('update', function (next) {
+            this.preHooksCalled.push(1);
             next();
           })
-          .pre('insert', (next) => {
-            account.hooksCalled.push('account:2');
+          .pre('update', function (next) {
+            this.preHooksCalled.push(2);
             next();
           });
 
-        let CustomType = Account.discriminator('CustomType');
+        Account.pre('update', function (next) {
+          this.preHooksCalled.push(3);
+          next();
+        });
 
-        CustomType
-          .pre('insert', (next) => {
-            account.hooksCalled.push('discriminator:1');
-            next();
-          })
-          .pre('insert', (next) => {
-            account.hooksCalled.push('discriminator:2');
-            next();
-          });
-
-        let account = new CustomType({ key: 'account-discriminator-2' });
-        account.hooksCalled = [];
-
-        account.insert((err) => {
+        account.update({}, (err) => {
           if (err) {
             return done(err);
           }
 
-          expect(account.hooksCalled).to.eql([
-            'account:1',
-            'account:2',
-            'discriminator:1',
-            'discriminator:2'
-          ]);
+          expect(account.preHooksCalled).to.eql([1,2,3]);
 
           done();
+        });
+      });
+
+      it('fails if one of the hooks calls back `next` with an error', (done) => {
+        account.preHooksCalled = [];
+
+        Account
+          .pre('update', function (next) {
+            this.preHooksCalled.push(1);
+            next();
+          })
+          .pre('update', function (next) {
+            this.preHooksCalled.push(2);
+            next(new Error('Oops!'));
+          });
+
+        Account.pre('update', function (next) {
+          this.preHooksCalled.push(3);
+          next();
+        });
+
+        account.update((err) => {
+          expect(err).to.exist;
+          expect(account.preHooksCalled).to.eql([1,2]);
+          done();
+        });
+      });
+    });
+
+    describe('when .post(update) hooks are present', () => {
+      it('calls back through the hooked functions', (done) => {
+        account.postHooksCalled = [];
+
+        Account
+          .post('update', function (next) {
+            this.postHooksCalled.push(1);
+            next();
+          })
+          .post('update', function (next) {
+            this.postHooksCalled.push(2);
+            next();
+          });
+
+        Account.post('update', function (next) {
+          this.postHooksCalled.push(3);
+          next();
+        });
+
+        account.update({}, (err) => {
+          if (err) {
+            return done(err);
+          }
+
+          expect(account.postHooksCalled).to.eql([1,2,3]);
+
+          done();
+        });
+      });
+    });
+
+    describe('discriminator', () => {
+      let CustomType, account;
+
+      beforeEach('setup discriminator', () => {
+        CustomType = Account.discriminator('CustomType');
+
+        return helper.db.insertAccount({
+          key: 'discriminator-to-update',
+          type: 'CustomType'
+        })
+          .then((entry) => {
+            return Account.get({ id: entry.id })
+              .then((_account_) => account = _account_);
+          });
+      });
+
+      describe('when .pre(update) hooks are present', () => {
+        it('calls through the hooked functions', (done) => {
+          account.preHooksCalled = [];
+
+          CustomType
+            .pre('update', function (next) {
+              this.preHooksCalled.push(1);
+              next();
+            })
+            .pre('update', function (next) {
+              this.preHooksCalled.push(2);
+              next();
+            });
+
+          CustomType.pre('update', function (next) {
+            this.preHooksCalled.push(3);
+            next();
+          });
+
+          account.update({}, (err) => {
+            if (err) {
+              return done(err);
+            }
+
+            expect(account.preHooksCalled).to.eql([1,2,3]);
+
+            done();
+          });
+        });
+
+        it('fails if one of the hooks calls back `next` with an error', (done) => {
+          account.preHooksCalled = [];
+
+          CustomType
+            .pre('update', function (next) {
+              this.preHooksCalled.push(1);
+              next();
+            })
+            .pre('update', function (next) {
+              this.preHooksCalled.push(2);
+              next(new Error('Oops!'));
+            });
+
+          CustomType.pre('update', function (next) {
+            this.preHooksCalled.push(3);
+            next();
+          });
+
+          account.update({}, (err) => {
+            expect(err).to.exist;
+            expect(account.preHooksCalled).to.eql([1,2]);
+            done();
+          });
+        });
+      });
+
+      describe('when .post(update) hooks are present', () => {
+        it('calls back through the hooked functions', (done) => {
+          account.postHooksCalled = [];
+
+          CustomType
+            .post('update', function (next) {
+              this.postHooksCalled.push(1);
+              next();
+            })
+            .post('update', function (next) {
+              this.postHooksCalled.push(2);
+              next();
+            });
+
+          CustomType.post('update', function (next) {
+            this.postHooksCalled.push(3);
+            next();
+          });
+
+          account.update({}, (err) => {
+            if (err) {
+              return done(err);
+            }
+
+            expect(account.postHooksCalled).to.eql([1,2,3]);
+
+            done();
+          });
         });
       });
     });

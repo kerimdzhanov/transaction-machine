@@ -51,4 +51,34 @@ Accounts are also can be gotten by their internal id, for example:
     $ [node] ./cli/get-account.js --id=4563
 
 
+## Updating accounts
+
+As well as `get-account` the `update-account` operation requires the `--key`
+or `--id` flag to get an account instance for updating.  And as of updating,
+use `--set-$field=$value`_-like_ flags to update fields' values.
+
+Here are some examples:
+
+```bash
+# suspend account with key 'acc-1'
+$ [node] ./cli/update-account.js --key=acc-1 --set-status=suspended
+
+# update the "postpaid" property of the account with key 'sys-1'
+$ [node] ./cli/update-account.js --key=sys-1 --set-postpaid=true
+
+# change the account 'key' referencing it by its internal id
+$ [node] ./cli/update-account.js --id=4563 --set-key=acc-2
+
+# the --set-* flags can be combined to perform update in a single operation
+$ [node] ./cli/update-account.js --id=4563 --set-key=sys-2 --set-type=Balancer --set-postpaid=true
+```
+
+## Deleting accounts
+
+It is highly **not recommended** to delete accounts physically,
+so if you want to delete an account, mark it as `deleted`, like:
+
+    $ [node] ./cli/update-account.js --key=acc-2 --set-status=deleted
+
+
 > To be continued...
