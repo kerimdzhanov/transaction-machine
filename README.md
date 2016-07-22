@@ -2,6 +2,7 @@
 
 Event-oriented financial transactions processing mechanism for Node.js/PostgreSQL.
 
+> #### The project is under development!
 
 ## Installation
 
